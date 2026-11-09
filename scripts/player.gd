@@ -21,12 +21,13 @@ const IDLE_SHEET := "res://assets/mech/idle.png"
 func _ready() -> void:
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(62,120)
+	shape.size = Vector2(88,170)
 	collision.shape = shape
-	collision.position = Vector2(0,-62)
+	collision.position = Vector2(0,-85)
 	add_child(collision)
 	visual = Node2D.new()
 	visual.name = "MechVisual"
+	visual.scale = Vector2(1.4, 1.4)
 	add_child(visual)
 	_make_mech()
 	_setup_sprite()
@@ -49,10 +50,10 @@ func _physics_process(delta: float) -> void:
 	elif Input.is_key_pressed(KEY_SPACE):
 		velocity.y = JUMP_VELOCITY
 	move_and_slide()
-	visual.scale.x = facing
+	visual.scale.x = 1.4 * facing
 	_update_sprite(delta)
 	if modular_mech != null:
-		modular_mech.animate(delta, absf(velocity.x) > 8.0, is_on_floor(), absf(velocity.x) / SPEED)
+		modular_mech.animate(delta, absf(velocity.x) > 8.0, is_on_floor(), absf(velocity.x) / SPEED, facing)
 	idle_time += delta
 	if absf(velocity.x) > 8.0 and is_on_floor():
 		walk_time += delta * 10.0
