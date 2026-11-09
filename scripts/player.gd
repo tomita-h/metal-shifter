@@ -13,6 +13,9 @@ var visual: Node2D
 var body_pivot: Node2D
 var left_leg: Node2D
 var right_leg: Node2D
+var sprite: Sprite2D
+var frame_time := 0.0
+const IDLE_SHEET := "res://assets/mech/idle.png"
 
 func _ready() -> void:
 	var collision := CollisionShape2D.new()
@@ -25,6 +28,7 @@ func _ready() -> void:
 	visual.name = "MechVisual"
 	add_child(visual)
 	_make_mech()
+	_setup_sprite()
 
 func _physics_process(delta: float) -> void:
 	var direction := Input.get_axis("ui_left","ui_right")
@@ -44,6 +48,11 @@ func _physics_process(delta: float) -> void:
 		velocity.y = JUMP_VELOCITY
 	move_and_slide()
 	visual.scale.x = facing
+	if sprite != null:
+		frame_time += delta
+		sprite.frame = int(frame_time / 0.14) % 9
+		# Keep the original GIF art intact; use subtle bobbing for locomotion.
+		sprite.position.y = -78.0 + (sin(walk_time * 2.0) * 2.0 if absf(velocity.x) > 8.0 else 0.0)
 	idle_time += delta
 	if absf(velocity.x) > 8.0 and is_on_floor():
 		walk_time += delta * 10.0
@@ -107,3 +116,26 @@ func _make_mech() -> void:
 	_part(weapon,"Arm",PackedVector2Array([Vector2(-8,-13),Vector2(15,-11),Vector2(24,13),Vector2(5,21),Vector2(-16,8)]),Color("#e2e7eb"))
 	_part(weapon,"Rifle",PackedVector2Array([Vector2(-8,6),Vector2(49,3),Vector2(62,10),Vector2(49,17),Vector2(-8,17)]),Color("#364456"))
 	_part(weapon,"Barrel",PackedVector2Array([Vector2(54,8),Vector2(82,8),Vector2(82,13),Vector2(54,13)]),Color("#94a6b7"))
+
+func _setup_sprite() -> void:
+	# Godot does not play animated GIFs directly; load the exported PNG strip.
+	# The sheet has 9 frames, each 420x415, laid out horizontally.
+	if not ResourceLoader.exists(IDLE_SHEET):
+		push_warning("Mech sprite sheet missing. Copy assets/mech/idle.png from the downloadable asset ZIP.")
+		return
+	var texture := load(IDLE_SHEET) as Texture2D
+	if texture == null:
+		return
+	sprite = Sprite2D.new()
+	sprite.name = "MechSprite"
+	sprite.texture = texture
+	sprite.hframes = 9
+	sprite.vframes = 1
+	sprite.scale = Vector2(0.45,0.45)
+	sprite.position = Vector2(-8,-78)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	visual.add_child(sprite)
+	# Hide procedural placeholder only after the real sprite loads.
+	for child in visual.get_children():
+		if child != sprite and child is CanvasItem:
+			child.visible = false
