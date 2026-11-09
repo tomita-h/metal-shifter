@@ -23,11 +23,18 @@ Godot 4.x で制作する、斜め視点の2D横スクロール・メカアク�
 
 **注意**: 初期版はプログラムで描画した仮メカです。生成済みGIFの画像自体はまだリポジトリへ組み込んでいません。
 
-## 生成した待機アニメーションを表示する
-1. ChatGPTから `metal-shifter-idle-assets.zip` をダウンロードして展開
-2. ZIP内の `assets/mech/idle.png` をリポジトリの同じ相対パスへ配置
-3. Godotで再インポートして F5 で実行
-4. 9フレームの待機アニメーションが表示されます。PNGがない場合は仮メカを表示します。
+## アニメーション画像の導入
+1. ChatGPTから `metal-shifter-motion-assets.zip` をダウンロード
+2. 展開した `assets/mech/idle.png`, `walk.png`, `jump.png` をプロジェクトの同じ場所へコピー
+3. Godotを開きF5で実行
 
-注意: 画像はまだGitHubにはコミットされていません。ローカルで確認後、`git add assets/mech/idle.png && git commit -m "Add mech idle sprite" && git push` で画像を登録してください。
-左右移動は実装済みですが、移動中も現時点では待機GIFを再生します。歩行専用のアニメーションは次の工程です。
+| 状態 | 画像 | フレーム |
+|---|---|---|
+| 待機 | idle.png | 9 |
+| 歩行 | walk.png | 8 |
+| ジャンプ | jump.png | 8 |
+
+左右移動は A/D または左右矢印、ジャンプは Space。
+画像が未配置の場合は仮メカが表示されます。
+ジャンプ用の画像は歩行フレームを再編集した暫定素材です。
+画像をGitHubへ反映するには `git add assets/mech/*.png && git commit -m "Add mech animation assets" && git push` を実行してください。
