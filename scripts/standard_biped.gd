@@ -21,31 +21,60 @@ func _ready() -> void:
 		torso_texture = load(path) as Texture2D
 	queue_redraw()
 
+var step_from := [Vector2.ZERO, Vector2.ZERO]
+var step_to := [Vector2.ZERO, Vector2.ZERO]
+var last_swing := -1
+var was_grounded := false
+const GROUND_Y := -4.0
+
 func animate(delta: float, moving: bool, grounded: bool, speed_ratio: float) -> void:
 	grounded_state = grounded
-	var target_blend := 1.0 if moving and grounded else 0.0
-	movement_blend = move_toward(movement_blend, target_blend, delta * 5.0)
-	if moving and grounded:
-		phase = fposmod(phase + delta * TAU * cycles_per_second * maxf(speed_ratio, 0.35), TAU)
-	front_foot = _foot_target(phase, 11.0)
-	rear_foot = _foot_target(phase + PI, -11.0)
+	var active := moving and grounded
+	movement_blend = move_toward(movement_blend, 1.0 if active else 0.0, delta * 7.0)
 	if not grounded:
-		front_foot = Vector2(24.0, -31.0)
-		rear_foot = Vector2(-17.0, -34.0)
+		was_grounded = false
+		last_swing = -1
+		front_foot = front_foot.lerp(Vector2(22.0, -29.0), minf(delta * 8.0, 1.0))
+		rear_foot = rear_foot.lerp(Vector2(-18.0, -29.0), minf(delta * 8.0, 1.0))
+		queue_redraw()
+		return
+	if not was_grounded:
+		front_foot = Vector2(11.0, GROUND_Y)
+		rear_foot = Vector2(-11.0, GROUND_Y)
+		phase = 0.0
+		last_swing = -1
+		was_grounded = true
+	if active:
+		var travel := 260.0 * clampf(speed_ratio, 0.0, 1.0) * delta
+		front_foot.x -= travel
+		rear_foot.x -= travel
+		var cycle_rate := maxf(cycles_per_second, 260.0 * speed_ratio / maxf(stride * 4.0, 1.0))
+		phase = fposmod(phase + delta * cycle_rate, 1.0)
+		var swing_index := 0 if phase < 0.5 else 1
+		var swing_t := fposmod(phase, 0.5) * 2.0
+		if swing_index != last_swing:
+			last_swing = swing_index
+			step_from[swing_index] = front_foot if swing_index == 0 else rear_foot
+			step_to[swing_index] = Vector2((11.0 if swing_index == 0 else -11.0) + stride, GROUND_Y)
+		var smooth := swing_t * swing_t * (3.0 - 2.0 * swing_t)
+		var foot := step_from[swing_index].lerp(step_to[swing_index], smooth)
+		foot.y = GROUND_Y - sin(swing_t * PI) * step_height
+		if swing_index == 0:
+			front_foot = foot
+		else:
+			rear_foot = foot
+	else:
+		last_swing = -1
+		front_foot = front_foot.lerp(Vector2(11.0, GROUND_Y), minf(delta * 7.0, 1.0))
+		rear_foot = rear_foot.lerp(Vector2(-11.0, GROUND_Y), minf(delta * 7.0, 1.0))
 	queue_redraw()
-
-func _foot_target(t: float, lane: float) -> Vector2:
-	# sin() supplies equal forward reach for each leg, PI out of phase.
-	var swing := sin(t)
-	var lift := pow(maxf(sin(t), 0.0), 1.3) * step_height
-	return Vector2(lane + stride * swing * movement_blend, -4.0 - lift * movement_blend)
 
 func _solve_knee(hip: Vector2, ankle: Vector2, bend: float) -> Vector2:
 	var diff := ankle - hip
-	var d := clampf(diff.length(), 0.001, thigh_length + shin_length - 0.01)
+	var d := clampf(diff.length(), absf(thigh_length - shin_length) + 0.01, thigh_length + shin_length - 0.01)
 	var along := (thigh_length * thigh_length - shin_length * shin_length + d * d) / (2.0 * d)
 	var perpendicular := sqrt(maxf(thigh_length * thigh_length - along * along, 0.0))
-	var axis := diff.normalized()
+	var axis := diff.normalized() if diff.length() > 0.001 else Vector2.DOWN
 	return hip + axis * along + Vector2(-axis.y, axis.x) * perpendicular * bend
 
 func _draw_bone(a: Vector2, b: Vector2, width: float, color: Color) -> void:
@@ -73,8 +102,8 @@ func _draw_leg(hip: Vector2, ankle: Vector2, near: bool) -> void:
 
 func _draw() -> void:
 	var bob := absf(sin(phase)) * body_bob * movement_blend
-	var rear_hip := Vector2(-12.0, -76.0 + bob)
-	var front_hip := Vector2(11.0, -76.0 + bob)
+	var rear_hip := Vector2(-12.0, -68.0 + bob)
+	var front_hip := Vector2(11.0, -68.0 + bob)
 	# Rear leg is drawn first, then torso, then near leg.
 	_draw_leg(rear_hip, rear_foot, false)
 	if torso_texture != null:
