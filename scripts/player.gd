@@ -183,14 +183,9 @@ func _update_sprite(delta: float) -> void:
 	sprite.position.y = -94.0
 
 func _setup_modular() -> void:
-	var path := "res://assets/mech/modular/"
-	var required := ["upper_body.png", "front_leg.png", "rear_leg.png"]
-	for filename in required:
-		if not ResourceLoader.exists(path + filename):
-			push_warning("Modular part missing: " + filename + ". Using existing sprite animation.")
-			return
-	modular_mech = preload("res://scripts/modular_mech.gd").new()
-	modular_mech.name = "ModularMech"
+	# The standard biped renders its own jointed legs. No leg PNG required.
+	modular_mech = preload("res://scripts/standard_biped.gd").new()
+	modular_mech.name = "StandardBiped"
 	visual.add_child(modular_mech)
 	if sprite != null:
 		sprite.visible = false
