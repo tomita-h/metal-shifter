@@ -13,6 +13,7 @@ var visual: Node2D
 var body_pivot: Node2D
 var left_leg: Node2D
 var right_leg: Node2D
+var modular_mech: Node2D
 var sprite: Sprite2D
 var frame_time := 0.0
 const IDLE_SHEET := "res://assets/mech/idle.png"
@@ -29,6 +30,7 @@ func _ready() -> void:
 	add_child(visual)
 	_make_mech()
 	_setup_sprite()
+	_setup_modular()
 
 func _physics_process(delta: float) -> void:
 	var direction := Input.get_axis("ui_left","ui_right")
@@ -49,6 +51,8 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	visual.scale.x = facing
 	_update_sprite(delta)
+	if modular_mech != null:
+		modular_mech.animate(delta, absf(velocity.x) > 8.0, is_on_floor(), absf(velocity.x) / SPEED)
 	idle_time += delta
 	if absf(velocity.x) > 8.0 and is_on_floor():
 		walk_time += delta * 10.0
@@ -177,3 +181,19 @@ func _update_sprite(delta: float) -> void:
 	else:
 		sprite.frame = int(animation_elapsed * fps) % count
 	sprite.position.y = -94.0
+
+func _setup_modular() -> void:
+	var path := "res://assets/mech/modular/"
+	var required := ["upper_body.png", "front_leg.png", "rear_leg.png"]
+	for filename in required:
+		if not ResourceLoader.exists(path + filename):
+			push_warning("Modular part missing: " + filename + ". Using existing sprite animation.")
+			return
+	modular_mech = preload("res://scripts/modular_mech.gd").new()
+	modular_mech.name = "ModularMech"
+	visual.add_child(modular_mech)
+	if sprite != null:
+		sprite.visible = false
+	for child in visual.get_children():
+		if child != modular_mech and child is CanvasItem:
+			child.visible = false
