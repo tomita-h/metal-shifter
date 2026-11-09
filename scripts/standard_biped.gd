@@ -18,6 +18,7 @@ const GREY := Color("#788ba0")
 const BLUE := Color("#356fae")
 
 var torso_texture: Texture2D
+var part_textures: Dictionary = {}
 var feet: Array[Vector2] = [Vector2(12.0, GROUND_Y), Vector2(-12.0, GROUND_Y)]
 var starts: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
 var targets: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
@@ -33,6 +34,10 @@ func _ready() -> void:
 	var path := "res://assets/mech/modular/upper_body.png"
 	if ResourceLoader.exists(path):
 		torso_texture = load(path) as Texture2D
+	for part in ["front_thigh", "front_shin", "front_foot", "back_thigh", "back_shin", "back_foot"]:
+		var path_part := "res://assets/mech/parts/%s.png" % part
+		if ResourceLoader.exists(path_part):
+			part_textures[part] = load(path_part) as Texture2D
 	queue_redraw()
 
 func _reset_feet() -> void:
@@ -122,12 +127,35 @@ func _armor_segment(a: Vector2, b: Vector2, width: float, base: Color, accent: C
 	draw_line(a + normal * width * 0.19, b + normal * width * 0.12, accent, 3.0, true)
 	draw_line(a - normal * width * 0.19, b - normal * width * 0.13, Color("#536577"), 2.0, true)
 
+func _draw_part(name: String, start: Vector2, finish: Vector2) -> bool:
+	if not part_textures.has(name):
+		return false
+	var texture: Texture2D = part_textures[name]
+	var scale_factor: float = start.distance_to(finish) / float(texture.get_height())
+	var angle: float = (finish - start).angle() - PI * 0.5
+	draw_set_transform(start, angle, Vector2.ONE * scale_factor)
+	draw_texture(texture, Vector2(-texture.get_width() * 0.5, 0.0))
+	draw_set_transform(Vector2.ZERO)
+	return true
+
+func _draw_foot_part(name: String, ankle: Vector2) -> bool:
+	if not part_textures.has(name):
+		return false
+	var texture: Texture2D = part_textures[name]
+	draw_set_transform(ankle, 0.0, Vector2.ONE * 0.22)
+	draw_texture(texture, Vector2(-texture.get_width() * 0.68, -texture.get_height() * 0.58))
+	draw_set_transform(Vector2.ZERO)
+	return true
+
 func _draw_leg(hip: Vector2, ankle: Vector2, near: bool) -> void:
 	var knee := _solve_knee(hip, ankle)
 	var armor := WHITE if near else GREY
 	var accent := Color("#ffffff") if near else Color("#a6b5c6")
-	_armor_segment(hip, knee, 25.0, armor, accent)
-	_armor_segment(knee, ankle, 21.0, armor, accent)
+	var prefix := "front" if near else "back"
+	if not _draw_part(prefix + "_thigh", hip, knee):
+		_armor_segment(hip, knee, 25.0, armor, accent)
+	if not _draw_part(prefix + "_shin", knee, ankle):
+		_armor_segment(knee, ankle, 21.0, armor, accent)
 	draw_circle(hip, 12.0, OUTLINE)
 	draw_circle(hip, 7.0, Color("#677d93"))
 	draw_circle(knee, 12.0, OUTLINE)
@@ -135,6 +163,8 @@ func _draw_leg(hip: Vector2, ankle: Vector2, near: bool) -> void:
 	draw_circle(knee, 4.0, Color("#a9d3e7"))
 	draw_circle(ankle, 8.0, OUTLINE)
 	draw_circle(ankle, 5.0, armor)
+	if _draw_foot_part(prefix + "_foot", ankle):
+		return
 	var sole := PackedVector2Array([
 		ankle + Vector2(-16,-4), ankle + Vector2(10,-5),
 		ankle + Vector2(25,4), ankle + Vector2(22,9),
