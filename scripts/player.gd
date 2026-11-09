@@ -48,11 +48,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = JUMP_VELOCITY
 	move_and_slide()
 	visual.scale.x = facing
-	if sprite != null:
-		frame_time += delta
-		sprite.frame = int(frame_time / 0.14) % 9
-		# Keep the original GIF art intact; use subtle bobbing for locomotion.
-		sprite.position.y = -78.0 + (sin(walk_time * 2.0) * 2.0 if absf(velocity.x) > 8.0 else 0.0)
+	_update_sprite(delta)
 	idle_time += delta
 	if absf(velocity.x) > 8.0 and is_on_floor():
 		walk_time += delta * 10.0
@@ -117,25 +113,67 @@ func _make_mech() -> void:
 	_part(weapon,"Rifle",PackedVector2Array([Vector2(-8,6),Vector2(49,3),Vector2(62,10),Vector2(49,17),Vector2(-8,17)]),Color("#364456"))
 	_part(weapon,"Barrel",PackedVector2Array([Vector2(54,8),Vector2(82,8),Vector2(82,13),Vector2(54,13)]),Color("#94a6b7"))
 
+const ANIMATIONS := {
+	"idle": {"path": "res://assets/mech/idle.png", "frames": 9, "fps": 7.0},
+	"walk": {"path": "res://assets/mech/walk.png", "frames": 8, "fps": 11.0},
+	"jump": {"path": "res://assets/mech/jump.png", "frames": 8, "fps": 9.0}
+}
+var animation_textures: Dictionary = {}
+var animation_name := ""
+var animation_elapsed := 0.0
+
 func _setup_sprite() -> void:
-	# Godot does not play animated GIFs directly; load the exported PNG strip.
-	# The sheet has 9 frames, each 420x415, laid out horizontally.
-	if not ResourceLoader.exists(IDLE_SHEET):
-		push_warning("Mech sprite sheet missing. Copy assets/mech/idle.png from the downloadable asset ZIP.")
-		return
-	var texture := load(IDLE_SHEET) as Texture2D
-	if texture == null:
+	for name in ANIMATIONS:
+		var path: String = ANIMATIONS[name]["path"]
+		if ResourceLoader.exists(path):
+			var texture := load(path) as Texture2D
+			if texture != null:
+				animation_textures[name] = texture
+	if animation_textures.is_empty():
+		push_warning("No mech sprites found. Extract motion asset ZIP into assets/mech.")
 		return
 	sprite = Sprite2D.new()
 	sprite.name = "MechSprite"
-	sprite.texture = texture
-	sprite.hframes = 9
-	sprite.vframes = 1
-	sprite.scale = Vector2(0.45,0.45)
-	sprite.position = Vector2(-8,-78)
+	sprite.scale = Vector2(0.45, 0.45)
+	sprite.position = Vector2(-8, -94)
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	visual.add_child(sprite)
-	# Hide procedural placeholder only after the real sprite loads.
 	for child in visual.get_children():
 		if child != sprite and child is CanvasItem:
 			child.visible = false
+	_play_animation("idle")
+
+func _play_animation(name: String) -> void:
+	if sprite == null:
+		return
+	if not animation_textures.has(name):
+		name = "idle"
+	if not animation_textures.has(name):
+		return
+	if animation_name == name:
+		return
+	animation_name = name
+	animation_elapsed = 0.0
+	sprite.texture = animation_textures[name]
+	sprite.hframes = int(ANIMATIONS[name]["frames"])
+	sprite.vframes = 1
+	sprite.frame = 0
+
+func _update_sprite(delta: float) -> void:
+	if sprite == null:
+		return
+	var next_anim := "idle"
+	if not is_on_floor():
+		next_anim = "jump"
+	elif absf(velocity.x) > 8.0:
+		next_anim = "walk"
+	_play_animation(next_anim)
+	animation_elapsed += delta
+	var fps: float = ANIMATIONS[animation_name]["fps"]
+	var count: int = ANIMATIONS[animation_name]["frames"]
+	if animation_name == "jump":
+		# Hold the airborne pose until landing; reset on the next jump.
+		sprite.frame = mini(int(animation_elapsed * fps), count - 1)
+	else:
+		sprite.frame = int(animation_elapsed * fps) % count
+	sprite.position.y = -94.0
