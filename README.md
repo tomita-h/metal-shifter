@@ -38,3 +38,7 @@ Godot 4.x で制作する、斜め視点の2D横スクロール・メカアク�
 画像が未配置の場合は仮メカが表示されます。
 ジャンプ用の画像は歩行フレームを再編集した暫定素材です。
 画像をGitHubへ反映するには `git add assets/mech/*.png && git commit -m "Add mech animation assets" && git push` を実行してください。
+
+
+## 標準2脚（関節制御・試作版）
+`scripts/standard_biped.gd` で2ボーンIKの歩行を実装しています。手前側・奥側は180度位相差で動き、膝が目標足首位置に合わせて曲がります。`stride`（歩幅）、`step_height`（足上げ）、`cycles_per_second`（歩行速度）を変更可能です。`assets/mech/modular/upper_body.png` があれば既存の上半身画像を使い、なければ簡易図形を表示します。脚は現段階では図形による仮表示で、関節ごとの装甲画像は今後追加します。実機での表示調整は未実施です。
