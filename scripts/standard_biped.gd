@@ -57,7 +57,7 @@ func animate(delta: float, moving: bool, grounded: bool, speed_ratio: float) -> 
 			step_from[swing_index] = front_foot if swing_index == 0 else rear_foot
 			step_to[swing_index] = Vector2((11.0 if swing_index == 0 else -11.0) + stride, GROUND_Y)
 		var smooth := swing_t * swing_t * (3.0 - 2.0 * swing_t)
-		var foot := step_from[swing_index].lerp(step_to[swing_index], smooth)
+		var foot: Vector2 = (step_from[swing_index] as Vector2).lerp(step_to[swing_index] as Vector2, smooth)
 		foot.y = GROUND_Y - sin(swing_t * PI) * step_height
 		if swing_index == 0:
 			front_foot = foot
